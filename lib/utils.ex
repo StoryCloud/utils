@@ -10,7 +10,7 @@ defmodule Utils do
   defdelegate get_aws_ssm_params(region, environment, application), to: Aws.Helper
   defdelegate get_aws_ssm_params(region, environment, application, ssm_params_func), to: Aws.Helper
 
-  defdelegate migrate(app), to: Rel.Task
+  defdelegate migrate(app, repo), to: Rel.Task
 
   defdelegate valid_aws_s3_upload_request?(canonical_request, date_time, config), to: Aws.S3.Signature
 end
