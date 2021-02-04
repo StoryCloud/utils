@@ -13,6 +13,16 @@ defmodule Utils.Aws.S3 do
     end
   end
 
+  def get_aws_s3_tags(object) do
+    with bucket = Object.bucket(object),
+         key = Object.key(object),
+         aws_region = Object.region(object) do
+      bucket
+      |> ExAws.S3.get_object_tagging(key)
+      |> ExAws.request(region: aws_region)
+    end
+  end
+
   defp add_signature_times(params, opts) do
     with start = Timex.now |> Timex.shift(minutes: -5),
          shift = opts[:timeout] || [hours: 1],
@@ -31,8 +41,12 @@ defmodule Utils.Aws.S3 do
 
   defp maybe_add_content_disposition(query, opts) do
     case opts[:file_name] do
-      nil -> query
-      val -> Map.put(query, "response-content-disposition", "attachment; filename=\"#{val}\"")
+      nil ->
+        query
+      val ->
+        with safe_name = :iconv.comvert("utf-8", "iso-8859-1", val) do
+          Map.put(query, "response-content-disposition", ~s(attachment; filename="#{safe_name}"))
+        end
     end
   end
 

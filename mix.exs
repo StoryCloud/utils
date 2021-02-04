@@ -19,6 +19,7 @@ defmodule Utils.MixProject do
     [
       {:ecto_sql, "~> 3.5"},
       {:httpoison, "~> 1.5"},
+      {:iconv, "~> 1.0"},
       {:jason, "~> 1.1"},
       {:timex, "~> 3.0"},
     ]
