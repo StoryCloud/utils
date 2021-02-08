@@ -12,8 +12,8 @@ defmodule Utils do
 
   defdelegate migrate(app, repo), to: Rel.Task
 
-  defp parse_multi_result({:ok, result}, key), do: {:ok, Map.fetch!(result, key)}
-  defp parse_multi_result({:error, _, changeset, _}, _), do: {:error, changeset}
+  def parse_multi_result({:ok, result}, key), do: {:ok, Map.fetch!(result, key)}
+  def parse_multi_result({:error, _, changeset, _}, _), do: {:error, changeset}
 
   defdelegate valid_aws_s3_upload_request?(canonical_request, date_time, config), to: Aws.S3.Signature
 end
