@@ -44,7 +44,7 @@ defmodule Utils.Aws.S3 do
       nil ->
         query
       val ->
-        with safe_name = :iconv.comvert("utf-8", "iso-8859-1", val) do
+        with safe_name = :iconv.convert("utf-8", "iso-8859-1", val) do
           Map.put(query, "response-content-disposition", ~s(attachment; filename="#{safe_name}"))
         end
     end
