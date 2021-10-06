@@ -18,6 +18,8 @@ defmodule Utils.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.5"},
+      {:ex_aws, "~> 2.2"},
+      {:ex_aws_s3, "~> 2.3"},
       {:httpoison, "~> 1.5"},
       {:iconv, "~> 1.0"},
       {:jason, "~> 1.1"},
