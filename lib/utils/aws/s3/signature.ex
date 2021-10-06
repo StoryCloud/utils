@@ -44,7 +44,7 @@ defmodule Utils.Aws.S3.Signature do
   end
 
   defp hmac_sha256(a, b) do
-    :crypto.hmac(:sha256, a, b)
+    :crypto.mac(:sha256, a, b)
   end
 
   defp iso8601_date_time(%{date_time: date_time}) do
