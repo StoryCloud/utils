@@ -1,8 +1,8 @@
 defmodule Utils.Aws.Helper do
   def get_aws_region do
-    with token = HTTPoison.put!("http://169.254.169.254/latest/api/token", "", [{"X-aws-ec2-metadata-token-ttl-seconds", 60}]),
-         {:ok, %HTTPoison.Response{status_code: code, body: body}} when code in 200..299 <- HTTPoison.get("http://169.254.169.254/latest/dynamic/instance-identity/document", [{"X-aws-ec2-metadata-token", token}]),
-         document = Jason.decode!(body) do
+    with {:ok, %HTTPoison.Response{status_code: code, body: text}} when code in 200..299 <- HTTPoison.put("http://169.254.169.254/latest/api/token", "", [{"X-aws-ec2-metadata-token-ttl-seconds", 60}]),
+         {:ok, %HTTPoison.Response{status_code: code, body: json}} when code in 200..299 <- HTTPoison.get("http://169.254.169.254/latest/dynamic/instance-identity/document", [{"X-aws-ec2-metadata-token", text}]),
+         document = Jason.decode!(json) do
       document["region"]
     else
       {:ok, %HTTPoison.Response{status_code: code}} ->
