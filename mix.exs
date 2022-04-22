@@ -23,6 +23,7 @@ defmodule Utils.MixProject do
       {:httpoison, "~> 1.5"},
       {:iconv, "~> 1.0"},
       {:jason, "~> 1.1"},
+      {:plug, "~> 1.11"},
       {:timex, "~> 3.0"},
     ]
   end
