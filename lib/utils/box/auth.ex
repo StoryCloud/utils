@@ -11,7 +11,8 @@ defmodule Utils.Box.Auth do
   @auth_client_middlewares [
     {Middleware.BaseUrl, @box_auth_base},
     Middleware.FormUrlencoded,
-    Middleware.Logger
+    Middleware.Logger,
+    Middleware.Retry,
   ]
 
   def client(middlewares) do
@@ -26,11 +27,17 @@ defmodule Utils.Box.Auth do
   def init(opts) do
     with client = Tesla.client(@auth_client_middlewares) do
       case opts do
+        #
+        # Copied tokens for development
+        #
         [access_token: access_token, expires: expires] ->
           with expires_at = Timex.parse!(expires, "{Mfull} {D}, {YYYY} at {h12}:{m}:{s} {AM}"),
                expires_at = Timex.to_datetime(expires_at, "America/New_York") do
             {:ok, %__MODULE__{access_token: access_token, client: client, expires_at: expires_at}}
           end
+        #
+        # Configuration for production
+        #
         config when is_list(config) ->
           {:ok, %__MODULE__{client: client, config: config}}
       end
@@ -40,12 +47,12 @@ defmodule Utils.Box.Auth do
   @impl GenServer
   def handle_call({:client, middlewares}, _, %__MODULE__{} = status) do
     with %{access_token: access_token} = status = maybe_update_status(status),
-         client = build_client(access_token, middlewares) do
+         client = build_authorized_client(access_token, middlewares) do
       {:reply, client, status}
     end
   end
 
-  defp build_client(access_token, middlewares) do
+  defp build_authorized_client(access_token, middlewares) do
     with middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, Middleware.Retry | middlewares] do
       Tesla.client middlewares
     end
@@ -65,7 +72,7 @@ defmodule Utils.Box.Auth do
 
   defp login(client, config) do
     with claims = build_jwt(config),
-         {:ok, body} <- post_request(client, config, claims),
+         {:ok, body} <- post(client, config, %{assertion: claims, grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer"}),
          auth = parse_auth(body) do
       {:ok, auth}
     end
@@ -110,16 +117,8 @@ defmodule Utils.Box.Auth do
     end
   end
 
-  defp post_refresh(client, config, refresh_token) do
-    post client, config, %{grant_type: "refresh_token", refresh_token: refresh_token}
-  end
-
-  defp post_request(client, config, jwt) do
-    post client, config, %{assertion: jwt, grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer"}
-  end
-
   def renew(client, config, refresh_token) do
-    with {:ok, body} <- post_refresh(client, config, refresh_token),
+    with {:ok, body} <- post(client, config, %{grant_type: "refresh_token", refresh_token: refresh_token}),
          auth = parse_auth(body) do
       {:ok, auth}
     end

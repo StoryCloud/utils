@@ -137,7 +137,7 @@ defmodule Utils.Box.File do
     |> File.stream!([], part_size)
     |> Stream.with_index
     |> Stream.map(&to_chunk_and_range(&1, part_size, size))
-    |> Task.async_stream(&upload_chunk(session, &1), max_concurrency: 1, ordered: true, timeout: :infinity)
+    |> Task.async_stream(&upload_chunk(session, &1), max_concurrency: 5, ordered: true, timeout: :infinity)
     |> Enum.reduce({:ok, []}, &accumulate_upload_result/2)
   end
 
