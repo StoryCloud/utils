@@ -12,7 +12,7 @@ defmodule Utils.MixProject do
   end
 
   def application do
-    []
+    [mod: {Utils.Application, []}, extra_applications: [:logger]]
   end
 
   defp deps do
@@ -24,6 +24,8 @@ defmodule Utils.MixProject do
       {:iconv, "~> 1.0"},
       {:jason, "~> 1.1"},
       {:plug, "~> 1.11"},
+      {:joken, "~> 2.4"},
+      {:tesla, "~> 1.4"},
       {:timex, "~> 3.0"},
     ]
   end
