@@ -30,6 +30,16 @@ defmodule Utils.Box.File do
     end
   end
 
+  def set_metadata(file_id, meta, scope \\ "global", template_key \\ "properties") do
+    with client = Auth.client([{Middleware.BaseUrl, @box_meta_endpoint}, Middleware.JSON, Middleware.PathParams]),
+         {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/:file_id/metadata/:scope/:template_key", meta, [opts: [path_params: [file_id: file_id, scope: scope, template_key: template_key]]]) do
+      {:ok, body}
+    else
+      {:ok, %{status: status}} ->
+        {:error, {:http_status, status}}
+    end
+  end
+
   defp accumulate_upload_result({:ok, item}, {:ok, items}) do
     {:ok, [item | items]}
   end
@@ -144,8 +154,9 @@ defmodule Utils.Box.File do
   defp upload_large(path, name, size, parent_id) do
     with {:ok, session} <- create_upload_session(name, size, parent_id),
          {:ok, parts} <- upload_chunks(session, path, size),
-         sha_sum = get_sha(path, :b64) do
-      commit_upload_session session, parts, sha_sum
+         sha_sum = get_sha(path, :b64),
+         {:ok, %{"entries" => [entry]}} <- commit_upload_session(session, parts, sha_sum) do
+      {:ok, entry}
     end
   end
 
@@ -153,8 +164,9 @@ defmodule Utils.Box.File do
     with sha_hex = get_sha(path, :hex) do
       with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"content-md5", sha_hex}]}, {Middleware.Query, [fields: @file_fields]}]),
            multipart = build_upload_multipart(path, name, parent_id),
-           {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/content", multipart) do
-        {:ok, body}
+           {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/content", multipart),
+           {:ok, %{"entries" => [entry]}} <- Jason.decode(body) do
+        {:ok, entry}
       else
         {:ok, %{status: 409}} ->
           with {:ok, %{"id" => file_id, "type" => "file"}} = get_item(name, parent_id),

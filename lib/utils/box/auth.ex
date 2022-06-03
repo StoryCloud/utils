@@ -98,9 +98,10 @@ defmodule Utils.Box.Auth do
     end
   end
 
-  defp parse_auth(%{access_token: access_token, expires_in: expires_in, refresh_token: refresh_token}) when is_integer(expires_in) do
+  defp parse_auth(%{"access_token" => access_token, "expires_in" => expires_in} = body) when is_integer(expires_in) do
     with time_now = Timex.now,
-         expires_at = Timex.shift(time_now, seconds: expires_in - 5) do
+         expires_at = Timex.shift(time_now, seconds: expires_in - 5),
+         refresh_token = Map.get(body, "refresh_token") do
       %{access_token: access_token, expires_at: expires_at, refresh_token: refresh_token}
     end
   end
