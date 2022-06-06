@@ -125,7 +125,7 @@ defmodule Utils.Box.Auth do
     end
   end
 
-  defp should_retry?({:ok, 500}), do: true
+  defp should_retry?({:ok, %{status: 500}}), do: true
   defp should_retry?({:ok, _}), do: false
   defp should_retry?({:error, _}), do: true
 end
