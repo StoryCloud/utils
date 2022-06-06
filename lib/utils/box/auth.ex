@@ -53,7 +53,7 @@ defmodule Utils.Box.Auth do
   end
 
   defp build_authorized_client(access_token, middlewares) do
-    with middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, Middleware.Retry | middlewares] do
+    with middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, {Middleware.Retry, should_retry: &should_retry?/1} | middlewares] do
       Tesla.client middlewares
     end
   end
@@ -118,10 +118,14 @@ defmodule Utils.Box.Auth do
     end
   end
 
-  def renew(client, config, refresh_token) do
+  defp renew(client, config, refresh_token) do
     with {:ok, body} <- post(client, config, %{grant_type: "refresh_token", refresh_token: refresh_token}),
          auth = parse_auth(body) do
       {:ok, auth}
     end
   end
+
+  defp should_retry?({:ok, 500}), do: true
+  defp should_retry?({:ok, _}), do: false
+  defp should_retry?({:error, _}), do: true
 end
