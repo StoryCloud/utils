@@ -5,7 +5,7 @@ defmodule Utils.Box.File do
   @box_data_endpoint "https://upload.box.com/api/2.0"
   @box_meta_endpoint "https://api.box.com/2.0"
   @file_fields "id,name,size,type"
-  @small_upload_size 20_000_000
+  @small_upload_size 40_000_000
 
   def ensure_folder(name, parent_id) do
     with client = Auth.client([{Middleware.BaseUrl, @box_meta_endpoint}, Middleware.JSON, {Middleware.Query, [fields: @file_fields]}]),
