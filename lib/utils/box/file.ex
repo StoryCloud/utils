@@ -54,7 +54,7 @@ defmodule Utils.Box.File do
   end
 
   defp commit_upload_session(%{"id" => session_id}, parts, sha_sum) do
-    with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"digest", "sha=#{sha_sum}"}]}, Middleware.JSON, Middleware.PathParams], retry_statuses: [202, 500]),
+    with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"digest", "sha=#{sha_sum}"}]}, Middleware.JSON, Middleware.PathParams], retry_statuses: [202, 500, 502, 503]),
          parts = Enum.reverse(parts),
          {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/upload_sessions/:session_id/commit", %{parts: parts}, [opts: [path_params: [session_id: session_id]]]) do
       {:ok, body}

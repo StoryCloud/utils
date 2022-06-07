@@ -53,7 +53,7 @@ defmodule Utils.Box.Auth do
   end
 
   defp build_authorized_client(access_token, middlewares, opts) do
-    with retry_statuses = Keyword.get(opts, :retry_statuses, [500]),
+    with retry_statuses = Keyword.get(opts, :retry_statuses, [500, 502, 503]),
          retry_function = tesla_retry_function(retry_statuses),
          middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, {Middleware.Retry, should_retry: retry_function} | middlewares] do
       Tesla.client middlewares
