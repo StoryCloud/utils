@@ -53,16 +53,12 @@ defmodule Utils.Box.File do
     end
   end
 
-  defp commit_upload_session(%{"id" => session_id} = session, parts, sha_sum) do
-    with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"digest", "sha=#{sha_sum}"}]}, Middleware.JSON, Middleware.PathParams]),
+  defp commit_upload_session(%{"id" => session_id}, parts, sha_sum) do
+    with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"digest", "sha=#{sha_sum}"}]}, Middleware.JSON, Middleware.PathParams], retry_statuses: [202, 500]),
          parts = Enum.reverse(parts),
          {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/upload_sessions/:session_id/commit", %{parts: parts}, [opts: [path_params: [session_id: session_id]]]) do
       {:ok, body}
     else
-      {:ok, %{status: 202}} ->
-        Process.sleep 2_000
-        commit_upload_session session, parts, sha_sum
-
       {:ok, %{status: status}} ->
         {:error, {:http_status, status}}
     end
@@ -159,7 +155,7 @@ defmodule Utils.Box.File do
     with {:ok, session} <- create_upload_session(name, size, parent_id),
          {:ok, parts} <- upload_chunks(session, path, size),
          sha_sum = get_sha(path, :b64),
-         {:ok, %{"entries" => [entry]}} <- commit_upload_session(session, parts, sha_sum) do
+         {:ok, %{"entries" => [entry]}} = commit_upload_session(session, parts, sha_sum) do
       {:ok, entry}
     end
   end
@@ -169,7 +165,7 @@ defmodule Utils.Box.File do
       with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"content-md5", sha_hex}]}, {Middleware.Query, [fields: @file_fields]}]),
            multipart = build_upload_multipart(path, name, parent_id),
            {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/content", multipart),
-           {:ok, %{"entries" => [entry]}} <- Jason.decode(body) do
+           {:ok, %{"entries" => [entry]}} = Jason.decode(body) do
         {:ok, entry}
       else
         {:ok, %{status: 409}} ->

@@ -15,8 +15,8 @@ defmodule Utils.Box.Auth do
     Middleware.Retry,
   ]
 
-  def client(middlewares) do
-    GenServer.call(__MODULE__, {:client, middlewares})
+  def client(middlewares, opts \\ []) do
+    GenServer.call(__MODULE__, {:client, middlewares, opts})
   end
 
   def start_link(opts) do
@@ -45,15 +45,17 @@ defmodule Utils.Box.Auth do
   end
 
   @impl GenServer
-  def handle_call({:client, middlewares}, _, %__MODULE__{} = status) do
+  def handle_call({:client, middlewares, opts}, _, %__MODULE__{} = status) do
     with %{access_token: access_token} = status = maybe_update_status(status),
-         client = build_authorized_client(access_token, middlewares) do
+         client = build_authorized_client(access_token, middlewares, opts) do
       {:reply, client, status}
     end
   end
 
-  defp build_authorized_client(access_token, middlewares) do
-    with middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, {Middleware.Retry, should_retry: &should_retry?/1} | middlewares] do
+  defp build_authorized_client(access_token, middlewares, opts) do
+    with retry_statuses = Keyword.get(opts, :retry_statuses, [500]),
+         retry_function = tesla_retry_function(retry_statuses),
+         middlewares = [{Middleware.BearerAuth, [token: access_token]}, Middleware.Logger, {Middleware.Retry, should_retry: retry_function} | middlewares] do
       Tesla.client middlewares
     end
   end
@@ -125,7 +127,10 @@ defmodule Utils.Box.Auth do
     end
   end
 
-  defp should_retry?({:ok, %{status: 500}}), do: true
-  defp should_retry?({:ok, _}), do: false
-  defp should_retry?({:error, _}), do: true
+  defp tesla_retry_function(retry_statuses) do
+    fn
+      {:ok, %{status: status}} -> status in retry_statuses
+      {:error, _} -> true
+    end
+  end
 end
