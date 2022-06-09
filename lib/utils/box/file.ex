@@ -89,9 +89,6 @@ defmodule Utils.Box.File do
     end
   end
 
-  defp get_encoder(:b64), do: &Base.encode64/1
-  defp get_encoder(:hex), do: &Base.encode16(&1, case: :lower)
-
   defp get_item(name, parent_id, marker \\ nil) do
     with query = [fields: @file_fields, limit: 1000, usemarker: true],
          query = if(marker, do: [{:marker, marker} | query], else: query),
@@ -114,14 +111,12 @@ defmodule Utils.Box.File do
     end
   end
 
-  defp get_sha(path, encoding) do
-    with func = get_encoder(encoding),
-         hash = :crypto.hash_init(:sha) do
+  defp get_sha(path) do
+    with hash = :crypto.hash_init(:sha) do
       path
-      |> File.stream!([], 2048)
+      |> File.stream!([], 1024*1024)
       |> Enum.reduce(hash, &:crypto.hash_update(&2, &1))
       |> :crypto.hash_final
-      |> func.()
     end
   end
 
@@ -154,14 +149,14 @@ defmodule Utils.Box.File do
   defp upload_large(path, name, size, parent_id) do
     with {:ok, session} <- create_upload_session(name, size, parent_id),
          {:ok, parts} <- upload_chunks(session, path, size),
-         sha_sum = get_sha(path, :b64),
+         sha_sum = get_sha(path) |> Base.encode64,
          {:ok, %{"entries" => [entry]}} = commit_upload_session(session, parts, sha_sum) do
       {:ok, entry}
     end
   end
 
   defp upload_small(path, name, size, parent_id) do
-    with sha_hex = get_sha(path, :hex) do
+    with sha_hex = get_sha(path) |> Base.encode16(case: :lower) do
       with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, {Middleware.Headers, [{"content-md5", sha_hex}]}, {Middleware.Query, [fields: @file_fields]}]),
            multipart = build_upload_multipart(path, name, parent_id),
            {:ok, %{body: body, status: 201}} <- Tesla.post(client, "files/content", multipart),
