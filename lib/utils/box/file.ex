@@ -120,6 +120,19 @@ defmodule Utils.Box.File do
     end
   end
 
+  defp settle_upload_session(session, attempts \\ 6)
+  defp settle_upload_session(_, 0), do: {:error, :timeout}
+  defp settle_upload_session(%{"id" => session_id} = session, attempts) when is_integer(attempts) and attempts > 0 do
+    with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, Middleware.JSON, Middleware.PathParams]),
+         {:ok, %{body: %{"num_parts_processed" => n, "total_parts" => n}, status: 200}} <- Tesla.get(client, "files/upload_sessions/:session_id", [opts: [path_params: [session_id: session_id]]]) do
+      :ok
+    else
+      _ ->
+        :timer.sleep 10_000
+        settle_upload_session session, attempts - 1
+    end
+  end
+
   defp to_chunk_and_range({chunk, index}, part_size, file_size) do
     with range_start = (index + 0) * part_size,
          range_close = (index + 1) * part_size - 1,
@@ -150,6 +163,7 @@ defmodule Utils.Box.File do
     with {:ok, session} <- create_upload_session(name, size, parent_id),
          {:ok, parts} <- upload_chunks(session, path, size),
          sha_sum = get_sha(path) |> Base.encode64,
+         :ok <- settle_upload_session(session),
          {:ok, %{"entries" => [entry]}} = commit_upload_session(session, parts, sha_sum) do
       {:ok, entry}
     end
