@@ -120,7 +120,7 @@ defmodule Utils.Box.File do
     end
   end
 
-  defp settle_upload_session(session, attempts \\ 30)
+  defp settle_upload_session(session, attempts \\ 1_000)
   defp settle_upload_session(_, 0), do: {:error, :timeout}
   defp settle_upload_session(%{"id" => session_id} = session, attempts) when is_integer(attempts) and attempts > 0 do
     with client = Auth.client([{Middleware.BaseUrl, @box_data_endpoint}, Middleware.JSON, Middleware.PathParams]),
