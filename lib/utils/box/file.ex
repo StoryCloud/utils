@@ -41,7 +41,12 @@ defmodule Utils.Box.File do
   end
 
   defp accumulate_upload_result({:ok, item}, {:ok, items}) do
-    {:ok, [item | items]}
+    #
+    # GC to flush our reference to the uploaded file chunk in the large-binary heap.
+    #
+    with :erlang.garbage_collect() do
+      {:ok, [item | items]}
+    end
   end
 
   defp build_upload_multipart(path, name, parent_id) do
